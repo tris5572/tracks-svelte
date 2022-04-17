@@ -2,6 +2,7 @@
 	import * as L from 'leaflet';
 	import 'leaflet/dist/leaflet.css';
 	import { onMount } from 'svelte';
+	import GeoUtil from 'leaflet-geometryutil';
 
 	let mapElement: HTMLElement;
 	let map: L.Map;
@@ -114,11 +115,11 @@
 		});
 	}
 
-	// 地図がクリックされたときに呼び出される。
-	// 何もないところ：新しい点を追加する。
-	// 何かあるところの処理はどうするか？
+	// 地図がクリックされたときに呼び出され、新しい点を追加する。
 	function mapClicked(e: L.LeafletMouseEvent) {
-		console.log(e);
+		const latlng = e.latlng;
+		track = [...track, latlng];
+		// console.log(e);
 	}
 
 	// 軌跡の表示を更新する。
@@ -144,6 +145,37 @@
 
 			// 線を表示する。
 			let line = L.polyline(track, { color: 'yellow', weight: 4 });
+
+			function trackLineDrag(e: L.LeafletMouseEvent) {
+				// セグメントの開始点の座標を取得。
+				const segment = getSegment(e.latlng, line).segment;
+				const start = draggingTrack.indexOf(segment[0]);
+				const end = draggingTrack.indexOf(segment[1]);
+				// ドラッグ中の点を追加済みかどうかで処理を変える。
+				if (end - start === 1) {
+					// 初めてのときは点を追加する。
+					draggingTrack.splice(start + 1, 0, e.latlng);
+					draggingTrack = draggingTrack;
+				} else {
+					// すでにドラッグ中の点が追加されているときは、点の座標を上書きする。
+					draggingTrack[start + 1] = e.latlng;
+					draggingTrack = draggingTrack;
+				}
+			}
+
+			// 線のドラッグが開始されたとき。
+			line.on('mousedown', (e: L.LeafletMouseEvent) => {
+				map.dragging.disable();
+				draggingTrack = [...track]; // ドラッグ中軌跡へコピー。
+				map.on('mousemove', trackLineDrag);
+			});
+			// マウスアップ（線のドラッグが終了）したとき。
+			map.on('mouseup', (e: L.LeafletMouseEvent) => {
+				map.dragging.enable();
+				// クリック判定が不要なため、ここの処理はシンプル。
+				map.off('mousemove', trackLineDrag);
+			});
+
 			line.addTo(trackLayer);
 
 			// 点を表示する。
@@ -151,7 +183,7 @@
 				let circle = L.circleMarker(p, { color: 'orange', radius: 6 });
 
 				// 点のドラッグを追跡し、当該の座標を移動させるコールバック。
-				function trackDrag(e: L.LeafletMouseEvent) {
+				function trackPointDrag(e: L.LeafletMouseEvent) {
 					// 軌跡からドラッグ元の座標と一致するものを探し、ドラッグ中の座標に置き換える。
 					for (const i in track) {
 						if (track[i] == p) {
@@ -161,13 +193,13 @@
 					}
 				}
 
-				// 点のドラッグが開始されたときのコールバックを追加。
+				// 点のドラッグが開始されたとき。
 				circle.on('mousedown', (e: L.LeafletMouseEvent) => {
 					map.dragging.disable();
 					draggingTrack = [...track]; // ドラッグ中軌跡へコピー。
 					draggingStartPoint = p; // 押された点の座標を記録。
 					clickFlag = true;
-					map.on('mousemove', trackDrag);
+					map.on('mousemove', trackPointDrag);
 				});
 
 				// 点のドラッグが終了したときのコールバックを追加。map に対して追加する。
@@ -183,7 +215,6 @@
 						if (clickFlag) {
 							for (let i = 0; i < track.length; i++) {
 								if (track[i] == draggingStartPoint) {
-									console.log(i, track[i], 'circle clicked and delete');
 									track.splice(i, 1);
 									track = track;
 									break;
@@ -192,12 +223,45 @@
 						}
 					}
 
-					map.off('mousemove', trackDrag);
+					map.off('mousemove', trackPointDrag);
 				});
 
 				circle.addTo(trackLayer);
 			}
 		}
+	}
+
+	// クリックされた座標が、ポリラインのどのセグメントに該当するかを返す。
+	// https://stackoverflow.com/questions/65082167/obtain-a-segment-of-polyline-which-was-clicked
+	function getSegment(latlng: L.LatLng, polyline: L.Polyline) {
+		// get layerpoint of user click
+		const latlngs = polyline.getLatLngs() as L.LatLng[];
+		let segments = [];
+
+		// get segments of polyline
+		// calculate distances from point to each polyline
+		for (let i = 0; i < latlngs.length - 1; i++) {
+			const pointToLineDistance = GeoUtil.distanceSegment(
+				map,
+				latlng,
+				latlngs[i],
+				latlngs[i + 1]
+			);
+
+			segments.push({
+				index: i,
+				pointToLineDistance,
+				segment: [latlngs[i], latlngs[i + 1]],
+			});
+		}
+
+		// sort segments by shortest distance
+		segments.sort((a, b) =>
+			a.pointToLineDistance < b.pointToLineDistance ? -1 : 1
+		);
+
+		// return first entry, which has shortest distance
+		return segments[0];
 	}
 
 	// 地図が動かされたときと初期化されたときに呼び出され、現在の位置情報関係の表示等を更新する。
