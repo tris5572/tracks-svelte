@@ -78,7 +78,7 @@
 
 		trackLayer.addTo(map);
 
-		// 初期表示位置をセットする。load イベントを発火させるために、on で load をセット後に呼び出す。
+		// 初期表示位置をセットする。
 		map.setView([35.8, 139.3], 9);
 
 		map.on('click', (e: L.LeafletMouseEvent) => {
@@ -201,7 +201,7 @@
 		}
 	}
 
-	// クリックされた座標が、ポリラインのどのセグメントに該当するかを返す。
+	// クリックされた座標が、ポリラインのどのセグメントに該当するかを返す。anyがあるが仕方ない。
 	// https://stackoverflow.com/questions/65082167/obtain-a-segment-of-polyline-which-was-clicked
 	function getSegment(latlng: L.LatLng, polyline: L.Polyline) {
 		// get layerpoint of user click

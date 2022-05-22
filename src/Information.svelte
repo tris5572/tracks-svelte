@@ -123,6 +123,12 @@
 		<p id="sample">{@html outputSample}</p>
 		<button on:click={copyToClipboard}>クリップボードへコピー</button>
 	</div>
+
+	<div id="footer">
+		<a href="https://github.com/tris5572/tracks-svelte" target="_blank"
+			>GitHub</a
+		>
+	</div>
 </section>
 
 <style>
@@ -157,5 +163,12 @@
 		padding: 2px 6px;
 		border-radius: 4px;
 		border: 1px solid #999;
+	}
+
+	#footer {
+		position: absolute;
+		bottom: 0px;
+		right: 0px;
+		padding: 2px;
 	}
 </style>
