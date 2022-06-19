@@ -6,7 +6,7 @@ Svelte + TypeScript で作成しています。
 
 ## 動作サンプル
 
-https://tris5572.github.io/tracks/
+https://tris5572.github.io/tracks-svelte/
 
 ## 操作方法
 
